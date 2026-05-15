@@ -18,9 +18,13 @@ class AppUI:
         self.selected_option = tk.IntVar(value=0)
         self.ws_url_var = tk.StringVar(value="ws://localhost:8765/ws")
         self.http_url_var = tk.StringVar(value="http://localhost:8765")
+        self.ws_status_var = tk.StringVar(value="Disconnected")
 
         self.request_text = None
         self.log_text = None
+        self.connect_button = None
+        self.disconnect_button = None
+        self.ws_send_button = None
 
         self.logger = AppLogger(self._append_log)
         self.http_client = HttpClient(self.logger)
@@ -34,6 +38,7 @@ class AppUI:
         self._configure_style()
         self._build_ui()
         self._load_default_command(0)
+        self._refresh_ws_controls()
 
     def _configure_style(self) -> None:
         style = ttk.Style()
@@ -86,6 +91,9 @@ class AppUI:
         ttk.Label(frame, text="HTTP Base URL:").grid(row=1, column=0, sticky="w", padx=8, pady=6)
         ttk.Entry(frame, textvariable=self.http_url_var).grid(row=1, column=1, sticky="ew", padx=8, pady=6)
 
+        ttk.Label(frame, text="WebSocket status:").grid(row=2, column=0, sticky="w", padx=8, pady=6)
+        ttk.Label(frame, textvariable=self.ws_status_var).grid(row=2, column=1, sticky="w", padx=8, pady=6)
+
     def _build_request_section(self) -> None:
         frame = ttk.LabelFrame(self.root, text="Command / Request")
         frame.grid(row=3, column=0, sticky="nsew", padx=12, pady=6)
@@ -107,10 +115,17 @@ class AppUI:
         for idx in range(4):
             frame.columnconfigure(idx, weight=1)
 
-        ttk.Button(frame, text="Connect", command=self.connect).grid(row=0, column=0, sticky="ew", padx=6, pady=6)
-        ttk.Button(frame, text="Disconnect", command=self.disconnect).grid(row=0, column=1, sticky="ew", padx=6, pady=6)
-        ttk.Button(frame, text="Send", command=self.send_websocket).grid(row=0, column=2, sticky="ew", padx=6, pady=6)
-        ttk.Button(frame, text="Send HTTP", command=self.send_http).grid(row=0, column=3, sticky="ew", padx=6, pady=6)
+        self.connect_button = ttk.Button(frame, text="Connect", command=self.connect)
+        self.connect_button.grid(row=0, column=0, sticky="ew", padx=6, pady=6)
+
+        self.disconnect_button = ttk.Button(frame, text="Disconnect", command=self.disconnect)
+        self.disconnect_button.grid(row=0, column=1, sticky="ew", padx=6, pady=6)
+
+        self.ws_send_button = ttk.Button(frame, text="Send", command=self.send_websocket)
+        self.ws_send_button.grid(row=0, column=2, sticky="ew", padx=6, pady=6)
+
+        self.http_send_button = ttk.Button(frame, text="Send HTTP", command=self.send_http)
+        self.http_send_button.grid(row=0, column=3, sticky="ew", padx=6, pady=6)
 
     def _build_log_section(self) -> None:
         frame = ttk.LabelFrame(self.root, text="Logs")
@@ -162,6 +177,39 @@ class AppUI:
 
     def _handle_ws_status_change(self, connected: bool) -> None:
         self.ws_connected = connected
+        self._update_ws_status_label(connected)
+        self._refresh_ws_controls()
+
+    def _update_ws_status_label(self, connected: bool) -> None:
+        status = "Connected" if connected else "Disconnected"
+        self.ws_status_var.set(status)
+        self.logger.log(f"WebSocket status changed: {status}")
+
+    def _refresh_ws_controls(self) -> None:
+        if self.connect_button is None or self.disconnect_button is None or self.ws_send_button is None:
+            return
+
+        if self.ws_connected:
+            self.connect_button.state(["disabled"])
+            self.disconnect_button.state(["!disabled"])
+            self.ws_send_button.state(["!disabled"])
+        else:
+            self.connect_button.state(["!disabled"])
+            self.disconnect_button.state(["disabled"])
+            self.ws_send_button.state(["disabled"])
+
+    def _validate_http_request_data(self, request_data):
+        if not isinstance(request_data, dict):
+            self.logger.log("HTTP request data must be a JSON object.")
+            return None
+
+        method = request_data.get("method")
+        path = request_data.get("path")
+        if not isinstance(method, str) or not isinstance(path, str):
+            self.logger.log("HTTP request must include 'method' and 'path' fields.")
+            return None
+
+        return request_data
 
     def connect(self) -> None:
         self.ws_manager.connect(self.ws_url_var.get().strip())
@@ -177,6 +225,9 @@ class AppUI:
 
     def send_http(self) -> None:
         request_data = self._parse_request_json()
+        if request_data is None:
+            return
+        request_data = self._validate_http_request_data(request_data)
         if request_data is None:
             return
         self.http_client.send_request(

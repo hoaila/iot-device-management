@@ -1,6 +1,8 @@
 import threading
+from typing import Any
 
 import requests
+from requests.exceptions import RequestException
 
 
 class HttpClient:
@@ -18,7 +20,15 @@ class HttpClient:
         body = request_data.get("body", None)
         timeout = request_data.get("timeout", 10)
 
-        url = f"{base_url.rstrip('/')}{path if path.startswith('/') else '/' + path}"
+        if not isinstance(headers, dict):
+            self.logger.log("HTTP headers must be an object/dictionary. Using empty headers.")
+            headers = {}
+
+        if not isinstance(timeout, (int, float)) or timeout <= 0:
+            self.logger.log("Invalid HTTP timeout. Using default timeout of 10 seconds.")
+            timeout = 10
+
+        url = f"{base_url.rstrip('/')}" + (path if path.startswith("/") else f"/{path}")
         self.logger.log(f"Sending HTTP request: {method} {url}")
 
         def do_request() -> None:
@@ -35,7 +45,10 @@ class HttpClient:
                     f"HTTP response: status={response.status_code}, "
                     f"reason={response.reason}, body={preview}"
                 )
-            except Exception as exc:
+            except RequestException as exc:
                 self.logger.log(f"HTTP request error: {exc}")
+            except Exception as exc:
+                self.logger.log(f"Unexpected HTTP request error: {exc}")
 
-        threading.Thread(target=do_request, daemon=True).start()
+        thread = threading.Thread(target=do_request, daemon=True)
+        thread.start()

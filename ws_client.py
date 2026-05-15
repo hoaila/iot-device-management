@@ -2,7 +2,10 @@ import json
 import threading
 from typing import Callable, Optional
 
-from websocket import WebSocketApp
+try:
+    from websocket import WebSocketApp
+except ImportError:  # pragma: no cover
+    WebSocketApp = None
 
 
 class WebSocketManager:
@@ -24,8 +27,16 @@ class WebSocketManager:
             self.logger.log("WebSocket is already connected.")
             return
 
+        if self.ws_thread and self.ws_thread.is_alive():
+            self.logger.log("WebSocket thread is already running.")
+            return
+
         if not ws_url:
             self.logger.log("WebSocket URL is empty.")
+            return
+
+        if WebSocketApp is None:
+            self.logger.log("WebSocket client dependency is missing.")
             return
 
         self.logger.log(f"Connecting to WebSocket: {ws_url}")
@@ -42,6 +53,7 @@ class WebSocketManager:
                 self.ws_app.run_forever()
             except Exception as exc:
                 self.logger.log(f"WebSocket run_forever exception: {exc}")
+                self._set_connected(False)
 
         self.ws_thread = threading.Thread(target=run_ws, daemon=True)
         self.ws_thread.start()
