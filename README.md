@@ -109,3 +109,63 @@ Example:
 ## 📄 License
 
 Free to use and modify.
+
+## API (local testing)
+
+Start the API server for testing:
+
+```bash
+python main.py
+# or with uvicorn for reloads:
+# uvicorn main:app --reload
+```
+
+Examples:
+
+Register device:
+
+```bash
+curl -X POST http://127.0.0.1:8000/devices -H 'Content-Type: application/json' -d '{"serial":"SN1","model":"M","owner":"you","transport":"ws"}'
+```
+
+Send command:
+
+```bash
+curl -X POST http://127.0.0.1:8000/devices/<id>/commands -H 'Content-Type: application/json' -d '{"name":"Ping"}'
+```
+
+Trigger OTA:
+
+```bash
+curl -X POST http://127.0.0.1:8000/devices/<id>/ota -H 'Content-Type: application/json' -d '{"artifact":"v1.0"}'
+```
+
+## API (local testing)
+
+Start the API server for testing:
+
+```bash
+python main.py
+# or with uvicorn for reloads:
+# uvicorn main:app --reload
+```
+
+Examples:
+
+Register device:
+
+```bash
+curl -X POST http://127.0.0.1:8000/devices -H 'Content-Type: application/json' -d '{"serial":"SN1","model":"M","owner":"you","transport":"ws"}'
+```
+
+Send command:
+
+```bash
+curl -X POST http://127.0.0.1:8000/devices/<id>/commands -H 'Content-Type: application/json' -d '{"name":"Ping"}'
+```
+
+Trigger OTA:
+
+```bash
+curl -X POST http://127.0.0.1:8000/devices/<id>/ota -H 'Content-Type: application/json' -d '{"artifact":"v1.0"}'
+```
