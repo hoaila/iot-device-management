@@ -20,12 +20,12 @@ class DeviceRegistration(BaseModel):
 
 
 class CommandPayload(BaseModel):
-    name: Optional[str]
-    payload: Optional[dict]
-    method: Optional[str]
-    path: Optional[str]
-    headers: Optional[dict]
-    body: Optional[dict]
+    name: Optional[str] = None
+    payload: Optional[dict] = None
+    method: Optional[str] = None
+    path: Optional[str] = None
+    headers: Optional[dict] = None
+    body: Optional[dict] = None
 
 
 class OTARequest(BaseModel):
